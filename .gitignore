@@ -1,0 +1,4 @@
+*.o
+*.elf
+submission.tar.gz
+examples/
