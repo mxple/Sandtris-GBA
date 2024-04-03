@@ -1,8 +1,16 @@
 #include "game.h"
-#include "bg.h"
-#include "colors.h"
+#include "assets/bg.h"
+#include "assets/colors.h"
+#include "assets/combo1.h"
+#include "assets/combo2.h"
+#include "assets/combo3.h"
+#include "assets/combo4.h"
+#include "assets/drop.h"
+#include "assets/title.h"
+#include "assets/typeA.h"
+
+#include "audio.h"
 #include "gba.h"
-#include "title.h"
 #include <stdio.h>
 
 static u16 board[BOARD_HEIGHT + 1][BOARD_WIDTH + 2];
@@ -10,7 +18,7 @@ static int __attribute__((section(".ewram")))
 chunks[CHUNKS_HEIGHT + 2][CHUNKS_WIDTH + 2];
 
 static enum state state = TITLE;
-static unsigned int score;
+static int score;
 static int clearFrame;
 static int hasUpdated;
 static int comboMult;
@@ -18,6 +26,8 @@ static int toClearX, toClearY;
 static int fillNum;
 static int __attribute__((section(".ewram")))
 visited[BOARD_HEIGHT][BOARD_WIDTH];
+
+static int highscores[4];
 
 static tetrimino pieceCurr;
 static tetrimino pieceNext;
@@ -64,7 +74,10 @@ void init(void) {
     comboMult = 1;
     fillNum = 1;
 
-    state = START;
+    // play audio
+    reset_music();
+    init_audio();
+    loop_music();
 }
 
 void drawBoard(void) {
@@ -97,7 +110,7 @@ void drawUI(void) {
 void drawScore(void) {
     char score_str[10];
     snprintf(score_str, 10, "%d", score);
-    drawRectDMA32(SCORE_OFFSET_Y, SCORE_OFFSET_X, 64, 8, 0x1884);
+    drawRectDMA32(SCORE_OFFSET_Y, SCORE_OFFSET_X, 50, 8, 0x1884);
     drawString(SCORE_OFFSET_Y, SCORE_OFFSET_X, score_str, COL_WHITE);
 }
 //
@@ -284,7 +297,24 @@ static inline void updateChunk(const int x, const int y) {
                 board[yy + 1][xx + 1] = board[yy][xx];
                 board[yy][xx] = 0;
                 // ++updates;
-            }
+            } 
+            // else if (!board[yy][xx - 1]) {
+            //     isActive = 1;
+            //     // // 10% chance to not move
+            //     if (randint(0, 5) == 0)
+            //         continue;
+            //     board[yy][xx - 1] = board[yy][xx];
+            //     board[yy][xx] = 0;
+            //     // ++updates;
+            // } else if (!board[yy][xx + 1]) {
+            //     isActive = 1;
+            //     // // 10% chance to not move
+            //     if (randint(0, 5) == 0)
+            //         continue;
+            //     board[yy][xx + 1] = board[yy][xx];
+            //     board[yy][xx] = 0;
+            //     // ++updates;
+            // }
         }
     }
 
@@ -343,7 +373,10 @@ int updatePiece(void) {
     return 0;
 }
 
-void restart(void) { state = TITLE; }
+void restart(void) { 
+    reset_music();
+    state = TITLE; 
+}
 
 void run(void) {
     // local vars
@@ -449,6 +482,8 @@ void run(void) {
         }
         hasUpdated = 0;
 
+        play_sfx(drop, drop_bytes);
+
         // blit current piece to board
         for (int i = 0; i < 4; i++) {
             const int *cell = PIECES[pieceCurr.type][pieceCurr.rotation][i];
@@ -545,6 +580,19 @@ void run(void) {
         comboMult += 240;
         score += (comboMult / 240) * cleared;
         ++comboMult;
+
+        if (comboMult > 900) {
+            play_sfx(combo4, combo4_bytes);
+        }
+        else if (comboMult > 6000) {
+            play_sfx(combo3, combo3_bytes);
+        }
+        else if (comboMult > 300) {
+            play_sfx(combo2, combo2_bytes);
+        }
+        else {
+            play_sfx(combo1, combo1_bytes);
+        }
         state = CLEAR2;
 
         waitForVBlank();
@@ -594,6 +642,16 @@ void run(void) {
         break;
 
     case GAMEOVER:
+        stop_music();
+
+        for (unsigned int i = 0; i < sizeof(highscores) / sizeof(int); i++) {
+            if (score < highscores[i]) continue;
+            int tmp = highscores[i];
+            highscores[i] = score;
+            score = tmp;
+        }
+
+
         if (key_hit(BUTTON_START))
             state = START;
         break;
