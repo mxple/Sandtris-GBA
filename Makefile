@@ -7,7 +7,7 @@
 # TA-TODO: Put your application name here.
 # This should be a just a name i.e MyFirstGBAProgram
 # No SPACES AFTER THE NAME.
-PROGNAME = App
+PROGNAME = Sandtris
 
 # TA-TODO: Add the C files you want compiled here (replace extension with .o)
 # OFILES should contain all the object files you want to compile into your
@@ -92,4 +92,4 @@ pong: client
 .PHONY: clean
 clean:
 	@echo "[CLEAN] Removing all compiled files"
-	rm -f *.o *.elf *.gba *.log */*.o *.sav */*/*.sav client
+	# rm -f *.o *.elf *.gba *.log */*.o *.sav */*/*.sav client
