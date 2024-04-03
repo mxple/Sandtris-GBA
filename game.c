@@ -22,6 +22,7 @@ static int score;
 static int clearFrame;
 static int hasUpdated;
 static int comboMult;
+static int combo;
 static int toClearX, toClearY;
 static int fillNum;
 static int __attribute__((section(".ewram")))
@@ -72,6 +73,7 @@ void init(void) {
     clearFrame = 12;
     hasUpdated = 1;
     comboMult = 1;
+    combo = 0;
     fillNum = 1;
 
     // play audio
@@ -363,6 +365,7 @@ int updatePiece(void) {
         for (int offset = 0; offset < 8; offset++) {
             // check if hit sand
             if (board[y][x + offset + 1]) {
+                play_sfx(drop, drop_bytes);
                 return 1;
             }
         }
@@ -481,8 +484,7 @@ void run(void) {
             break;
         }
         hasUpdated = 0;
-
-        play_sfx(drop, drop_bytes);
+        combo = 0;
 
         // blit current piece to board
         for (int i = 0; i < 4; i++) {
@@ -577,17 +579,18 @@ void run(void) {
         cleared *= (cleared >> 8) ? (cleared >> 8) : 1;
 
         if (comboMult < 0) comboMult = 0;
-        comboMult += 240;
-        score += (comboMult / 240) * cleared;
-        ++comboMult;
+        comboMult += 220;
+        ++combo;
 
-        if (comboMult > 900) {
+        score += combo * (comboMult / 220) * cleared;
+
+        if (combo > 3) {
             play_sfx(combo4, combo4_bytes);
         }
-        else if (comboMult > 6000) {
+        else if (combo > 2) {
             play_sfx(combo3, combo3_bytes);
         }
-        else if (comboMult > 300) {
+        else if (combo > 1) {
             play_sfx(combo2, combo2_bytes);
         }
         else {
