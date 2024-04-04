@@ -36,8 +36,8 @@ LDFLAGS = -nostartfiles -lc -lgcc -L $(ARMLIB) \
 crt0.o : $(LINKSCRIPT_DIR)/crt0.s
 	@$(AS) $(MODEL) $^ -o crt0.o
 
-libc_sbrk.o : $(LINKSCRIPT_DIR)/libc_sbrk.c
-	@$(CC) $(CFLAGS) $(CRELEASE) -c $< -o libc_sbrk.o
+# libc_sbrk.o : $(LINKSCRIPT_DIR)/libc_sbrk.c
+# 	@$(CC) $(CFLAGS) $(CRELEASE) -c $< -o libc_sbrk.o
 
 LDFLAGS += --specs=nosys.specs
 
