@@ -1,6 +1,7 @@
 PROGNAME = Sandtris
 
 OFILES := $(shell find . -name '*.c' | sed 's/\.c/\.o/g')
+# OFILES += test.o
 
 .PHONY: all
 all: CFLAGS += $(CDEBUG) -I../shared
@@ -35,6 +36,9 @@ LDFLAGS = -nostartfiles -lc -lgcc -L $(ARMLIB) \
 
 crt0.o : $(LINKSCRIPT_DIR)/crt0.s
 	@$(AS) $(MODEL) $^ -o crt0.o
+
+# test.o : test.s 
+# 	@$(CC) $(CFLAGS) $(CRELEASE) -c $< -o test.o
 
 # libc_sbrk.o : $(LINKSCRIPT_DIR)/libc_sbrk.c
 # 	@$(CC) $(CFLAGS) $(CRELEASE) -c $< -o libc_sbrk.o

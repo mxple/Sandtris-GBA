@@ -17,7 +17,16 @@ int main(void) {
     // Manipulate REG_DISPCNT here to set Mode 3. //
     REG_DISPCNT = BG2_ENABLE | MODE3;
 
+
     while (1) {
+        // __asm(
+        //    ".global dbgs\n\t"           
+        //     "LDR R2, =dbgs\n\t"                                                     
+        //     "LDR R2, [R2, #0]\n\t"                                                     
+        //     "ADD R2, R2, #4\n\t"
+        //     "STR R2, =dbgs\n\t"
+        // );
+        
         // input polling
         key_poll();
 
@@ -28,7 +37,6 @@ int main(void) {
         // game logic
         run();
 
-        // dbgs = TIMER3_REGDATA;
         // char s[16];
         // sprintf(s, "%d.%d", dbgs, dbge);
         // undrawImageDMA(8, 0, 56, 8, bg);

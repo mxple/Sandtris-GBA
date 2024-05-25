@@ -13,9 +13,9 @@
 #include "gba.h"
 #include <stdio.h>
 
-static u16 board[BOARD_HEIGHT + 1][BOARD_WIDTH + 2];
-static int __attribute__((section(".ewram")))
-chunks[CHUNKS_HEIGHT + 2][CHUNKS_WIDTH + 2];
+u16 board[BOARD_HEIGHT + 1][BOARD_WIDTH + 2];
+int __attribute__((section(".ewram")))
+chunks[CHUNKS_HEIGHT + 1][CHUNKS_WIDTH];
 
 static enum state state = TITLE;
 static int score;
@@ -32,6 +32,8 @@ static int highscores[4];
 
 static tetrimino pieceCurr;
 static tetrimino pieceNext;
+
+// extern void updateWorldASM();
 
 static inline tetrimino newPiece(void) {
     return (tetrimino){
@@ -63,7 +65,7 @@ void init(void) {
 
     // zero chunks
     DMA[3].dst = chunks;
-    DMA[3].cnt = (((CHUNKS_WIDTH + 2) * (CHUNKS_HEIGHT + 2))) | DMA_ON |
+    DMA[3].cnt = (((CHUNKS_WIDTH) * (CHUNKS_HEIGHT + 1))) | DMA_ON |
                  DMA_32 | DMA_SOURCE_FIXED;
 
     pieceCurr = newPiece();
@@ -115,18 +117,18 @@ void drawScore(void) {
     drawRectDMA32(SCORE_OFFSET_Y, SCORE_OFFSET_X, 50, 8, 0x1884);
     drawString(SCORE_OFFSET_Y, SCORE_OFFSET_X, score_str, COL_WHITE);
 }
-//
-// void drawChunks(void) {
-//     for (int y = 1; y <= CHUNKS_HEIGHT; y++) {
-//         for (int x = 1; x <= CHUNKS_WIDTH; x++) {
-//             if (chunks[y][x]) {
-//                 videoBuffer[OFFSET(CHUNK_SIZE * (y - 1),
-//                                    CHUNK_SIZE * (x - 1) + BOARD_X_OFFSET + 1,
-//                                    WIDTH)] = 0xFFF0;
-//             }
-//         }
-//     }
-// }
+
+void drawChunks(void) {
+    for (int y = 0; y < CHUNKS_HEIGHT; y++) {
+        for (int x = 0; x < CHUNKS_WIDTH; x++) {
+            if (chunks[y][x]) {
+                videoBuffer[OFFSET(CHUNK_SIZE * y,
+                                   CHUNK_SIZE * x + BOARD_X_OFFSET + 1,
+                                   WIDTH)] = 0xFFF0;
+            }
+        }
+    }
+}
 
 #define INSIDE(X, Y)                                                           \
     (((board[Y][X] & COL_MASK) == col) && (visited[Y][X - 1] != fillNum))
@@ -265,66 +267,56 @@ int contourR(void) {
     return 0;
 }
 
-static inline void updateChunk(const int x, const int y) {
-    int isActive = 0;
-    for (int yy = y * CHUNK_SIZE - 1; yy >= (y - 1) * CHUNK_SIZE; yy--) {
-        for (int xx = (x - 1) * CHUNK_SIZE + 1; xx <= x * CHUNK_SIZE; xx++) {
-            if (!board[yy][xx])
-                continue;
+static inline void __attribute__ ((target("arm"))) updateWorld(void) {
+    for (int y = CHUNKS_HEIGHT-1; y > 1; y--) {
+        for (int x = 0; x < CHUNKS_WIDTH; x++) {
+            if (!chunks[y][x]) continue;
+              
+            int isActive = 0;
+            for (int yy = (y + 1) * CHUNK_SIZE - 1; yy >= y * CHUNK_SIZE; yy--) {
+                for (int xx = x * CHUNK_SIZE + 1; xx <= (x + 1) * CHUNK_SIZE; xx++) {
+                    if (!board[yy][xx])
+                        continue;
 
-            // if (++updates & 0x8) continue;
+                    // fall
+                    if (!board[yy + 1][xx]) {
+                        isActive = 1;
+                        // // 10% chance to not move
+                        if (randint(0, 5) == 0)
+                            continue;
+                        board[yy + 1][xx] = board[yy][xx];
+                        board[yy][xx] = 0;
+                        // ++updates;
+                    } else if (!board[yy + 1][xx - 1]) {
+                        isActive = 1;
+                        // // 10% chance to not move
+                        if (randint(0, 5) == 0)
+                            continue;
+                        board[yy + 1][xx - 1] = board[yy][xx];
+                        board[yy][xx] = 0;
+                        // ++updates;
+                    } else if (!board[yy + 1][xx + 1]) {
+                        isActive = 1;
+                        if (randint(0, 5) == 0)
+                            continue;
+                        board[yy + 1][xx + 1] = board[yy][xx];
+                        board[yy][xx] = 0;
+                        // ++updates;
+                    } 
+                }
+            }
 
-            // fall
-            if (!board[yy + 1][xx]) {
-                isActive = 1;
-                // // 10% chance to not move
-                if (randint(0, 5) == 0)
-                    continue;
-                board[yy + 1][xx] = board[yy][xx];
-                board[yy][xx] = 0;
-                // ++updates;
-            } else if (!board[yy + 1][xx - 1]) {
-                isActive = 1;
-                // // 10% chance to not move
-                if (randint(0, 5) == 0)
-                    continue;
-                board[yy + 1][xx - 1] = board[yy][xx];
-                board[yy][xx] = 0;
-                // ++updates;
-            } else if (!board[yy + 1][xx + 1]) {
-                isActive = 1;
-                // // 10% chance to not move
-                if (randint(0, 5) == 0)
-                    continue;
-                board[yy + 1][xx + 1] = board[yy][xx];
-                board[yy][xx] = 0;
-                // ++updates;
-            } 
-            // else if (!board[yy][xx - 1]) {
-            //     isActive = 1;
-            //     // // 10% chance to not move
-            //     if (randint(0, 5) == 0)
-            //         continue;
-            //     board[yy][xx - 1] = board[yy][xx];
-            //     board[yy][xx] = 0;
-            //     // ++updates;
-            // } else if (!board[yy][xx + 1]) {
-            //     isActive = 1;
-            //     // // 10% chance to not move
-            //     if (randint(0, 5) == 0)
-            //         continue;
-            //     board[yy][xx + 1] = board[yy][xx];
-            //     board[yy][xx] = 0;
-            //     // ++updates;
-            // }
+            chunks[y][x] = isActive;
+            if (isActive) {
+                chunks[y - 1][x] = 1;
+                chunks[y][x - 1] = 1;
+                chunks[y][x + 1] = 1;
+                chunks[y + 1][x] = 1;
+            } else {
+                chunks[y][x] = 0;
+            }
         }
     }
-
-    chunks[y][x] = isActive;
-    chunks[y - 1][x] |= isActive;
-    chunks[y][x - 1] |= isActive;
-    chunks[y][x + 1] |= isActive;
-    chunks[y + 1][x] |= isActive;
 }
 
 int updatePiece(void) {
@@ -429,14 +421,21 @@ void run(void) {
         }
         // 178 ( -50 )
 
+        dbgs = SCANLINECOUNTER;
         // update world
         // 17 8w/ 34 4w
-        for (int y = CHUNKS_HEIGHT; y > 0; y--) {
-            for (int x = 1; x <= CHUNKS_WIDTH; x++) {
-                if (chunks[y][x])
-                    updateChunk(x, y);
-            }
-        }
+        updateWorld();
+        dbge = SCANLINECOUNTER;
+        // updateWorldASM();
+        // __asm(
+        //    ".global dbgs\n\t"           
+        //    ".global chunks\n\t"           
+        //    ".global board\n\t"           
+        //     "LDR R4, =dbgs\n\t"                                                     
+        //     "LDR R5, =board\n\t"                                                     
+        //     "LDR R5, [R5]\n\t"                                                     
+        //     "STR R5, [R4]\n\t"
+        // );
         // worse case we are at about 200
         while (SCANLINECOUNTER > 205)
             ; // skip a frame for either too fast or too slow cases
@@ -447,6 +446,7 @@ void run(void) {
 
         drawBoard();
         drawPiece();
+        // drawChunks();
         // 175 225
 
         break;
@@ -498,8 +498,8 @@ void run(void) {
                                    [pieceCurr.x + cell[0] + 1];
                 DMA[3].cnt = 8 | DMA_ON | DMA_16;
             }
-            int cx = ((pieceCurr.x + cell[0]) / CHUNK_SIZE) + 1;
-            int cy = ((pieceCurr.y + cell[1]) / CHUNK_SIZE) + 1;
+            int cx = ((pieceCurr.x + cell[0]) / CHUNK_SIZE);
+            int cy = ((pieceCurr.y + cell[1]) / CHUNK_SIZE);
             chunks[cy][cx] = 1;
             chunks[cy][cx + 1] = 1;
             chunks[cy][cx + 2] = 1;
@@ -613,7 +613,30 @@ void run(void) {
             clearFrame = 12;
         }
 
+        if (clearFrame == 8) {
+            // color visited black
+            for (int y = 0; y < BOARD_HEIGHT; y++) {
+                for (int x = 0; x < BOARD_WIDTH; x++) {
+                    if (visited[y][x] == fillNum) {
+                        board[y][x + 1] = 0;
+                    }
+                }
+            }
+        }
+        if (clearFrame == 4) {
+            // color visited white
+            for (int y = 0; y < BOARD_HEIGHT; y++) {
+                for (int x = 0; x < BOARD_WIDTH; x++) {
+                    if (visited[y][x] == fillNum) {
+                        board[y][x + 1] = 0xFFFF;
+                    }
+                }
+            }
+        }
+
         waitForVBlank();
+        drawBoard();
+        drawPiece();
 
         break;
     case CLEAR3:
@@ -629,7 +652,7 @@ void run(void) {
 
         DMA[3].src = &one;
         DMA[3].dst = chunks;
-        DMA[3].cnt = (((CHUNKS_WIDTH + 2) * (CHUNKS_HEIGHT + 2))) | DMA_ON |
+        DMA[3].cnt = (((CHUNKS_WIDTH) * (CHUNKS_HEIGHT + 1))) | DMA_ON |
                      DMA_32 | DMA_SOURCE_FIXED;
 
         state = FALL;
