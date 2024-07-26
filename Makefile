@@ -1,11 +1,7 @@
 PROGNAME = Sandtris
-
 OFILES := $(shell find . -name '*.c' | sed 's/\.c/\.o/g')
-# OFILES += test.o
 
 .PHONY: all
-all: CFLAGS += $(CDEBUG) -I../shared
-all: LDFLAGS += $(LDDEBUG)
 all: $(PROGNAME).gba
 	@echo "[FINISH] Created $(PROGNAME).gba"
 
@@ -18,48 +14,35 @@ CC      := $(CROSS)gcc
 LD      := $(CROSS)ld
 OBJCOPY := $(CROSS)objcopy
 
-ARMINC = /usr/local/include/arm-none-eabi/
-ARMLIB = /usr/local/lib/arm-none-eabi/
-GCCLIB = /usr/local/lib/gcc/arm-none-eabi/$(GCC_VERSION)
+ARMINC = /usr/arm-none-eabi/include
+ARMLIB = /usr/arm-none-eabi/lib
+GCCLIB = /usr/lib/gcc/arm-none-eabi/$(GCC_VERSION)
 
 CRELEASE = -O2
-CDEBUG = -g -DDEBUG
 LDRELEASE = -s
-LDDEBUG = -g
 
 MODEL   = -mthumb-interwork -mthumb
-CFLAGS  = -Wall -std=c99 -pedantic -Wextra -fno-common $(MODEL) -mlong-calls -I $(ARMINC)
+CFLAGS  = -Wall -Werror -std=c99 -pedantic -Wextra -fno-common $(MODEL) -mlong-calls -I $(ARMINC)
 LDFLAGS = -nostartfiles -lc -lgcc -L $(ARMLIB) \
-	 -L $(ARMLIB)/thumb \
-	 -L $(GCCLIB) \
-	 -T $(LINKSCRIPT_DIR)/arm-gba.ld
+	  -L $(ARMLIB)/thumb \
+	  -L $(GCCLIB) \
+	  -T $(LINKSCRIPT_DIR)/arm-gba.ld
 
 crt0.o : $(LINKSCRIPT_DIR)/crt0.s
 	@$(AS) $(MODEL) $^ -o crt0.o
-
-# test.o : test.s 
-# 	@$(CC) $(CFLAGS) $(CRELEASE) -c $< -o test.o
-
-# libc_sbrk.o : $(LINKSCRIPT_DIR)/libc_sbrk.c
-# 	@$(CC) $(CFLAGS) $(CRELEASE) -c $< -o libc_sbrk.o
 
 LDFLAGS += --specs=nosys.specs
 
 # Adjust default compiler warnings and errors
 CFLAGS += -Wstrict-prototypes -Wold-style-definition -Werror=vla
-CFLAGS += -O2
+CFLAGS += -O3
 
-$(PROGNAME).gba: $(PROGNAME).elf 
+$(PROGNAME).gba: clean $(PROGNAME).elf
 	@echo "[LINK] Linking objects together to create $(PROGNAME).gba"
 	@$(OBJCOPY) -O binary $(PROGNAME).elf $(PROGNAME).gba
 
-$(PROGNAME).elf: crt0.o $(GCCLIB)/crtbegin.o $(GCCLIB)/crtend.o $(GCCLIB)/crti.o $(GCCLIB)/crtn.o $(OFILES) #libc_sbrk.o
+$(PROGNAME).elf: crt0.o $(GCCLIB)/crtbegin.o $(GCCLIB)/crtend.o $(GCCLIB)/crti.o $(GCCLIB)/crtn.o $(OFILES)
 	$(CC) -o $(PROGNAME).elf $^ $(LDFLAGS)
-
-.PHONY: mgba
-mgba:
-	@mgba ${PROGNAME}.gba
-	@echo "[EXECUTE] Running emulator mGBA"
 
 .PHONY: clean
 clean:
