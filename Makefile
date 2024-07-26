@@ -22,7 +22,7 @@ CRELEASE = -O2
 LDRELEASE = -s
 
 MODEL   = -mthumb-interwork -mthumb
-CFLAGS  = -Wall -Werror -std=c99 -pedantic -Wextra -fno-common $(MODEL) -mlong-calls -I $(ARMINC)
+CFLAGS  = -Wall -Werror -std=c99 -pedantic -Wextra -fno-common $(MODEL) -mlong-calls -I $(ARMINC) -g
 LDFLAGS = -nostartfiles -lc -lgcc -L $(ARMLIB) \
 	  -L $(ARMLIB)/thumb \
 	  -L $(GCCLIB) \
@@ -35,7 +35,7 @@ LDFLAGS += --specs=nosys.specs
 
 # Adjust default compiler warnings and errors
 CFLAGS += -Wstrict-prototypes -Wold-style-definition -Werror=vla
-CFLAGS += -O3
+CFLAGS += -O2
 
 $(PROGNAME).gba: clean $(PROGNAME).elf
 	@echo "[LINK] Linking objects together to create $(PROGNAME).gba"

@@ -2,11 +2,6 @@
 #include "gba.h"
 
 #include "assets/typeA.h"
-#include "assets/combo1.h"
-#include "assets/combo2.h"
-#include "assets/combo3.h"
-#include "assets/combo4.h"
-#include "assets/drop.h"
 
 static const unsigned short ticks_per_sample = 16777216 / 16834;
 

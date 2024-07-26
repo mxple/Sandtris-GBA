@@ -19,28 +19,17 @@ int main(void) {
 
 
     while (1) {
-        // __asm(
-        //    ".global dbgs\n\t"           
-        //     "LDR R2, =dbgs\n\t"                                                     
-        //     "LDR R2, [R2, #0]\n\t"                                                     
-        //     "ADD R2, R2, #4\n\t"
-        //     "STR R2, =dbgs\n\t"
-        // );
-        
         // input polling
         key_poll();
-
-        // if (key_hit(BUTTON_A))
-        //     // stop_music();
-        //     play_sfx(combo1, combo1_bytes);
 
         // game logic
         run();
 
-        // char s[16];
-        // sprintf(s, "%d.%d", dbgs, dbge);
-        // undrawImageDMA(8, 0, 56, 8, bg);
-        // drawString(8, 0, s, COL_CYAN);
+        char s[16];
+        int p = dbge < dbgs ? 228 + dbge - dbgs : dbge - dbgs;
+        sprintf(s, "%d", p);
+        undrawImageDMA(8, 0, 56, 8, bg);
+        drawString(8, 0, s, COL_CYAN);
     }
 
     return 0;

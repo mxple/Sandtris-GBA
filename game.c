@@ -7,15 +7,14 @@
 #include "assets/combo4.h"
 #include "assets/drop.h"
 #include "assets/title.h"
-#include "assets/typeA.h"
 
 #include "audio.h"
 #include "gba.h"
 #include <stdio.h>
 
-u16 board[BOARD_HEIGHT + 1][BOARD_WIDTH + 2];
-int __attribute__((section(".ewram")))
-chunks[CHUNKS_HEIGHT + 1][CHUNKS_WIDTH];
+static u16 board[BOARD_HEIGHT + 1][BOARD_WIDTH + 2];
+
+static u16 __attribute__((section(".ewram"))) chunks[CHUNKS_HEIGHT + 1][CHUNKS_WIDTH];
 
 static enum state state = TITLE;
 static int score;
@@ -25,8 +24,8 @@ static int comboMult;
 static int combo;
 static int toClearX, toClearY;
 static int fillNum;
-static int __attribute__((section(".ewram")))
-visited[BOARD_HEIGHT][BOARD_WIDTH];
+static u16
+    __attribute__((section(".ewram"))) visited[BOARD_HEIGHT][BOARD_WIDTH];
 
 static int highscores[4];
 
@@ -65,8 +64,8 @@ void init(void) {
 
     // zero chunks
     DMA[3].dst = chunks;
-    DMA[3].cnt = (((CHUNKS_WIDTH) * (CHUNKS_HEIGHT + 1))) | DMA_ON |
-                 DMA_32 | DMA_SOURCE_FIXED;
+    DMA[3].cnt = (((CHUNKS_WIDTH) * (CHUNKS_HEIGHT + 1))) | DMA_ON | DMA_32 |
+                 DMA_SOURCE_FIXED;
 
     pieceCurr = newPiece();
     pieceNext = newPiece();
@@ -183,7 +182,7 @@ void fill(int x, int y, const int col) {
 }
 
 int contour(const int x, const int y, const int col, const int targ, int dir) {
-    static const int __attribute__((section(".iwram"))) offset[4][3][2] = {
+    static const int __attribute__((section(".vram"))) offset[4][3][2] = {
         {{-1, -1}, {0, -1}, {1, -1}},
         {{1, -1}, {1, 0}, {1, 1}},
         {{1, 1}, {0, 1}, {-1, 1}},
@@ -267,42 +266,47 @@ int contourR(void) {
     return 0;
 }
 
-static inline void __attribute__ ((target("arm"))) updateWorld(void) {
-    for (int y = CHUNKS_HEIGHT-1; y > 1; y--) {
+static inline void __attribute__((target("arm"))) updateWorld(void) {
+    for (int y = CHUNKS_HEIGHT - 1; y > 1; y--) {
         for (int x = 0; x < CHUNKS_WIDTH; x++) {
-            if (!chunks[y][x]) continue;
-              
+            if (!chunks[y][x])
+                continue;
+
             int isActive = 0;
-            for (int yy = (y + 1) * CHUNK_SIZE - 1; yy >= y * CHUNK_SIZE; yy--) {
-                for (int xx = x * CHUNK_SIZE + 1; xx <= (x + 1) * CHUNK_SIZE; xx++) {
+            int zz = 4;
+            for (int yy = (y + 1) * CHUNK_SIZE - 1; yy >= y * CHUNK_SIZE;
+                 yy--) {
+                for (int xx = x * CHUNK_SIZE + 1; xx <= (x + 1) * CHUNK_SIZE;
+                     xx++) {
                     if (!board[yy][xx])
                         continue;
 
                     // fall
                     if (!board[yy + 1][xx]) {
                         isActive = 1;
-                        // // 10% chance to not move
-                        if (randint(0, 5) == 0)
+                        if (--zz == 0) {
+                            zz = 4;
                             continue;
+                        }
                         board[yy + 1][xx] = board[yy][xx];
                         board[yy][xx] = 0;
-                        // ++updates;
                     } else if (!board[yy + 1][xx - 1]) {
                         isActive = 1;
-                        // // 10% chance to not move
-                        if (randint(0, 5) == 0)
+                        if (--zz == 0) {
+                            zz = 4;
                             continue;
+                        }
                         board[yy + 1][xx - 1] = board[yy][xx];
                         board[yy][xx] = 0;
-                        // ++updates;
                     } else if (!board[yy + 1][xx + 1]) {
                         isActive = 1;
-                        if (randint(0, 5) == 0)
+                        if (--zz == 0) {
+                            zz = 4;
                             continue;
+                        }
                         board[yy + 1][xx + 1] = board[yy][xx];
                         board[yy][xx] = 0;
-                        // ++updates;
-                    } 
+                    }
                 }
             }
 
@@ -368,9 +372,9 @@ int updatePiece(void) {
     return 0;
 }
 
-void restart(void) { 
+void restart(void) {
     reset_music();
-    state = TITLE; 
+    state = TITLE;
 }
 
 void run(void) {
@@ -411,34 +415,17 @@ void run(void) {
 
         break;
 
-    // target 175 start (-53)
     case FALL:
-        // 175 180 ( -53 )
         hasUpdated = 1;
         if (updatePiece()) {
             state = SPAWN;
             break;
         }
-        // 178 ( -50 )
 
-        dbgs = SCANLINECOUNTER;
-        // update world
-        // 17 8w/ 34 4w
         updateWorld();
-        dbge = SCANLINECOUNTER;
-        // updateWorldASM();
-        // __asm(
-        //    ".global dbgs\n\t"           
-        //    ".global chunks\n\t"           
-        //    ".global board\n\t"           
-        //     "LDR R4, =dbgs\n\t"                                                     
-        //     "LDR R5, =board\n\t"                                                     
-        //     "LDR R5, [R5]\n\t"                                                     
-        //     "STR R5, [R4]\n\t"
-        // );
-        // worse case we are at about 200
+
         while (SCANLINECOUNTER > 205)
-            ; // skip a frame for either too fast or too slow cases
+            ;
         state = FLOOD;
 
         while (SCANLINECOUNTER < 145)
@@ -447,17 +434,15 @@ void run(void) {
         drawBoard();
         drawPiece();
         // drawChunks();
-        // 175 225
 
         break;
     case FLOOD:
-        // 175 225
         if (updatePiece()) {
             state = SPAWN;
             break;
         }
-        // 150 to 200
         int a = SCANLINECOUNTER;
+
         if (contourL() || contourR()) {
             state = CLEAR1;
         } else {
@@ -470,15 +455,14 @@ void run(void) {
         while (SCANLINECOUNTER < 145)
             ;
 
+        dbgs = SCANLINECOUNTER;
         drawBoard();
         drawPiece();
-        // 175 185
+        dbge = SCANLINECOUNTER;
 
         break;
 
-    // 2 framer!
     case SPAWN:
-        // free 100ish scanlines???
         if (!hasUpdated) {
             state = GAMEOVER;
             break;
@@ -544,7 +528,6 @@ void run(void) {
 
         drawPiece();
         drawUI();
-        // 180
 
         break;
     case SPAWN2:
@@ -578,7 +561,8 @@ void run(void) {
         }
         cleared *= (cleared >> 8) ? (cleared >> 8) : 1;
 
-        if (comboMult < 0) comboMult = 0;
+        if (comboMult < 0)
+            comboMult = 0;
         comboMult += 220;
         ++combo;
 
@@ -586,14 +570,11 @@ void run(void) {
 
         if (combo > 3) {
             play_sfx(combo4, combo4_bytes);
-        }
-        else if (combo > 2) {
+        } else if (combo > 2) {
             play_sfx(combo3, combo3_bytes);
-        }
-        else if (combo > 1) {
+        } else if (combo > 1) {
             play_sfx(combo2, combo2_bytes);
-        }
-        else {
+        } else {
             play_sfx(combo1, combo1_bytes);
         }
         state = CLEAR2;
@@ -671,15 +652,16 @@ void run(void) {
         stop_music();
 
         for (unsigned int i = 0; i < sizeof(highscores) / sizeof(int); i++) {
-            if (score < highscores[i]) continue;
+            if (score < highscores[i])
+                continue;
             int tmp = highscores[i];
             highscores[i] = score;
             score = tmp;
         }
 
-
         if (key_hit(BUTTON_START))
             state = START;
+
         break;
     }
 }
