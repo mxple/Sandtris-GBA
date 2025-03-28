@@ -25,11 +25,11 @@ int main(void) {
         // game logic
         run();
 
-        char s[16];
-        int p = dbge < dbgs ? 228 + dbge - dbgs : dbge - dbgs;
-        sprintf(s, "%d", p);
-        undrawImageDMA(8, 0, 56, 8, bg);
-        drawString(8, 0, s, COL_CYAN);
+        /*char s[16];*/
+        /*int p = dbge < dbgs ? 228 + dbge - dbgs : dbge - dbgs;*/
+        /*sprintf(s, "%d", p);*/
+        /*undrawImageDMA(8, 0, 56, 8, bg);*/
+        /*drawString(8, 0, s, COL_CYAN);*/
     }
 
     return 0;
