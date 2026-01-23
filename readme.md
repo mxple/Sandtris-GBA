@@ -14,3 +14,7 @@ Backspace to restart
 
 ## Disclaimer
 This game actively kills braincells. I am not responsible for brainrot.
+
+To run on real hardware, checkout
+
+https://github.com/mxple/Sandtris-GBA/issues/3
