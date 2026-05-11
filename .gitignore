@@ -1,3 +1,6 @@
 *.o
 *.elf
+*.gba
+*.sav
+.DS_Store
 /tools
